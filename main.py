@@ -8,3 +8,5 @@ df = pd.read_csv("data/raw/AAPL.csv")
 
 plt.plot(df["Date"][:10],df["Close"][:10])
 plt.grid() ; plt.show()
+
+
