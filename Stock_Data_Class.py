@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 
 class StockData:
     def __init__(self, folder_path : str):
-        
         data_frames = []
         for filename in os.listdir(folder_path):
             if filename.endswith('.csv'):
@@ -18,6 +17,7 @@ class StockData:
         
         self.data = pd.concat(data_frames, ignore_index=True)
         self.data['Date'] =  pd.to_datetime(self.data['Date'])
+        self.data['Return'] = self.data.groupby('Ticker')['Adj Close'].pct_change()
 
     def infos(self) -> None :
         "Display Available Tickers"
@@ -53,11 +53,11 @@ class StockData:
             stock_data = self.get_historical_data(ticker)
             stock_data = stock_data[stock_data['Date'] >= common_start_date]
             if normalize:
-                stock_data['Close'] = stock_data['Close'] / stock_data['Close'].iloc[0]
-            sns.lineplot(x='Date', y='Close', data=stock_data, label=ticker)
+                stock_data['Adj Close'] = stock_data['Adj Close'] / stock_data['Adj Close'].iloc[0]
+            sns.lineplot(x='Date', y='Adj Close', data=stock_data, label=ticker)
         plt.title('Historical Stock Prices')
         plt.xlabel('Date')
-        plt.ylabel('Close Price')
+        plt.ylabel('Adj Close Price')
         plt.legend()
         plt.show()
 
