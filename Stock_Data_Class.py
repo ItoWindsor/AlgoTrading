@@ -63,4 +63,21 @@ class StockData:
 
 
 
-     
+def sequential_split_by_ticker(data, train_fraction=0.8):
+    # Assuming 'Ticker' is the column that contains the ticker names
+    tickers = data['Ticker'].unique()
+
+    train_dfs = []
+    test_dfs = []
+
+    for ticker in tickers:
+        ticker_data = data[data['Ticker'] == ticker]
+        train_size = int(len(ticker_data) * train_fraction)
+        train, test = ticker_data.iloc[:train_size], ticker_data.iloc[train_size:]
+        train_dfs.append(train)
+        test_dfs.append(test)
+
+    train_combined = pd.concat(train_dfs)
+    test_combined = pd.concat(test_dfs)
+
+    return train_combined, test_combined
