@@ -8,9 +8,16 @@ import src.stock as stock
 
 class Portfolio:
 
-    def __init__(self, tickers = ('AAPL',)):
+    def __init__(self, tickers = ('AAPL',), quantities : dict[str,float] = None):
         temp = [stock.Stock(ticker = key) for key in tickers]
         self.assets = dict(zip(tickers, temp))
+        if quantities is None:
+            self.quantities = dict(zip(tickers,np.zeros(len(tickers))))
+
+    def update_quantities(self, new_quantities : dict[str,float]):
+        for ticker in new_quantities.keys():
+            self.quantities[ticker] = new_quantities[ticker]
+
 
     def __str__(self):
         returned_str = "assets :"
@@ -25,6 +32,11 @@ class Portfolio:
     def __setitem__(self, ticker : str, value):
         if ticker in self.assets.keys():
             self.assets[ticker] = value
+
+    def get_list_tickers(self) -> list:
+        tickers = list(self.assets.keys())
+        tickers = [ticker for ticker in tickers if (ticker in self.assets.keys())]
+        return tickers
 
     def get_common_start_date(self, start_date : Union[datetime.datetime,str,None] = None) -> datetime.datetime:
         tickers = list(self.assets.keys())
@@ -58,6 +70,22 @@ class Portfolio:
                 common_end_date = self.assets[ticker].data["Date"].iloc[-1]
 
         return common_end_date
+
+    def plot_value_portfolio(self,price_column : str = 'Adj Close', start_date: Union[datetime.datetime, str, None] = None, end_date: Union[datetime.datetime, str, None] = None) -> None:
+        common_start_date = self.get_common_start_date(start_date = start_date)
+        common_end_date = self.get_common_end_date(end_date = end_date)
+        tickers = self.get_list_tickers()
+        value = np.zeros(self.assets[tickers[0]]['Date'][(self[tickers[0]]['Date'] >= common_start_date) & (self[tickers[0]]['Date'] <= common_end_date)].shape[0])
+        dates = np.array(self[tickers[0]]['Date'][(self[tickers[0]]['Date'] >= common_start_date) & (self[tickers[0]]['Date'] <= common_end_date)])
+        for ticker in tickers:
+            arr = np.array(self[ticker][price_column][(self[ticker]['Date'] >= common_start_date) & (self[ticker]['Date'] <= common_end_date)])
+            value += self.quantities[ticker]*arr
+
+        plt.plot(dates,value)
+        plt.grid()
+        plt.ylabel("valeur")
+        plt.title(f'Evolution de la valeur du portefeuille | {common_start_date} to {common_end_date}')
+        plt.show()
 
     def get_historical_data(self,start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None, inplace : bool = False) ->  Union[None,Dict[str, Any]]:
         min_date = start_date
