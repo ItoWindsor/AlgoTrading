@@ -17,7 +17,7 @@ class StockData:
         
         self.data = pd.concat(data_frames, ignore_index=True)
         self.data['Date'] =  pd.to_datetime(self.data['Date'])
-        self.data['Return'] = self.data.groupby('Ticker')['Adj Close'].pct_change()
+        self.data['Return'] = self.data.groupby('Ticker')['Adj Close'].pct_change()  #feature 1 : Returns _1 Day 
 
     def infos(self) -> None :
         "Display Available Tickers"
