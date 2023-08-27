@@ -137,7 +137,7 @@ class Portfolio:
             self[ticker].add_indicators(indicator = indicator, column_name = column_name, start_date = common_start_date, end_date = common_end_date, inplace = True)
 
 
-    def compute_correlations(self, tickers : list = None, column_name : str = 'Adj Close',start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None):
+    def compute_correlations(self, tickers : set = None, column_name : str = 'Adj Close',start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None):
         if tickers is None:
             tickers = list(self.assets.keys())
         tickers = [ticker for ticker in tickers if (ticker in self.assets.keys())]
@@ -150,7 +150,10 @@ class Portfolio:
         arr = np.array([self[ticker][column_name][(self[ticker]["Date"] >= common_start_date) & (self[ticker]["Date"] <= common_end_date)] for ticker in tickers])
         return np.corrcoef(arr)
 
-    def plot_heatmap(self, tickers : list = None, column_name : str = 'Adj Close',start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None) -> None:
+    def plot_heatmap(self, tickers : set = None, column_name : str = 'Adj Close',start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None) -> None:
+        if tickers is None:
+            tickers = list(self.assets.keys())
+        tickers = [ticker for ticker in tickers if (ticker in self.assets.keys())]
         correlation_matrix = self.compute_correlations(tickers = tickers, column_name = column_name,start_date = start_date, end_date = end_date)
         sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, xticklabels=tickers, yticklabels=tickers)
         plt.title(f'Correlation Heatmap | {start_date} to {end_date}')
