@@ -4,9 +4,14 @@ import datetime
 import pandas as pd
 import numpy as np
 
+import src.enumerate_classes as enumcls
+
 
 class Stock:
-    def __init__(self, ticker: str = "AAPL",start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None):
+    def __init__(self, ticker: str = "AAPL",
+                 start_date : Union[datetime.datetime,str] = None,
+                 end_date : Union[datetime.datetime,str] = None):
+
         self.ticker = ticker
         self.data = pd.read_csv(filepath_or_buffer = f"../data/raw/{ticker}.csv")
         if type(self.data["Date"][0]) != datetime.datetime:
@@ -29,7 +34,10 @@ class Stock:
             self.data[column] = value
 
 
-    def get_historical_data(self, start_date : datetime.datetime = None, end_date : datetime.datetime = None, inplace = False) -> Union[None,pd.DataFrame]:
+    def get_historical_data(self,
+                            start_date : datetime.datetime = None,
+                            end_date : datetime.datetime = None,
+                            inplace = False) -> Union[None,pd.DataFrame]:
         if start_date is not None:
             data_temp = self.data[self.data["Date"] >= start_date]
         if end_date is not None:
@@ -39,7 +47,12 @@ class Stock:
         else:
             return data_temp
 
-    def plot_histogram(self, column_name : str = 'Adj Close',bins : int = None, start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None) -> None:
+    def plot_histogram(self,
+                       column_name : str = 'Adj Close',
+                       bins : int = None,
+                       start_date : Union[datetime.datetime,str] = None,
+                       end_date : Union[datetime.datetime,str] = None) -> None:
+
         if column_name not in self.data.columns: ## transformer ça en erreur plutôt
             column_name = 'Adj Close'
 
@@ -66,7 +79,7 @@ class Stock:
         plt.title(f"{self.ticker} | Histogramme de {column_name} | {start_date} to {end_date}")
         plt.show()
 
-    def add_indicators(self,indicator : str = 'log return 1D', column_name : str = "Adj Close",start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None, inplace = True):
+    def add_indicators(self,indicator : str = 'log return 1d', column_name : str = "Adj Close",start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None, inplace = True):
         if start_date is None:
             start_date = self["Date"].iloc[0]
         if end_date is None:
@@ -74,17 +87,16 @@ class Stock:
 
         arr = np.array(self[column_name][(self['Date'] >= start_date) & (self["Date"] <= end_date)])
         temp = [1]
+        indicator = enumcls.return_element(indicator, enumcls.indicators)
         match indicator:
-            case 'log return 1D':
+            case enumcls.indicators.log_return_1d:
                 for i in range(1, len(arr)): ## TODO : VECTORIZE IT PLS
                     temp.append(arr[i] / (arr[i - 1]))
-
                 temp = np.log(np.array(temp))
-
         if inplace is True:
-            self.data['log return 1D'] = np.zeros(self.data.shape[0])
-            self.data['log return 1D'] = np.nan
-            self.data['log return 1D'][(self.data["Date"] >= start_date) & (self.data["Date"] <= end_date)] = temp
+            self.data[indicator.value] = np.zeros(self.data.shape[0])
+            self.data[indicator.value] = np.nan
+            self.data[indicator.value][(self.data["Date"] >= start_date) & (self.data["Date"] <= end_date)] = temp
         else:
             return temp
 

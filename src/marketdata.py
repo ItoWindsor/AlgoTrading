@@ -1,22 +1,19 @@
 import datetime
 from typing import Union, Dict, Any
-import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 
 import src.stock as stock
+import src.enumerate_classes as enumcls
 
-class Portfolio:
 
-    def __init__(self, tickers = ('AAPL',), quantities : dict[str,float] = None):
+class Marketdata:
+
+    def __init__(self, tickers : tuple = ('AAPL',)):
         temp = [stock.Stock(ticker = key) for key in tickers]
         self.assets = dict(zip(tickers, temp))
-        if quantities is None:
-            self.quantities = dict(zip(tickers,np.zeros(len(tickers))))
-
-    def update_quantities(self, new_quantities : dict[str,float]):
-        for ticker in new_quantities.keys():
-            self.quantities[ticker] = new_quantities[ticker]
 
 
     def __str__(self):
@@ -38,56 +35,46 @@ class Portfolio:
         tickers = [ticker for ticker in tickers if (ticker in self.assets.keys())]
         return tickers
 
-    def get_common_start_date(self, start_date : Union[datetime.datetime,str,None] = None) -> datetime.datetime:
+    def get_common_start_date(self, start_date : Union[datetime.datetime,str] = None) -> datetime.datetime:
         tickers = list(self.assets.keys())
         tickers = [ticker for ticker in tickers if (ticker in self.assets.keys())]
 
-        if type(start_date) == str:
-            start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d')
-            common_start_date = start_date
-        else:
+        if start_date is None:
             common_start_date = self.assets[tickers[0]].data["Date"].iloc[0]
+        else:
+            if type(start_date) == str:
+                common_start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+            else:
+                common_start_date = start_date
 
         for ticker in tickers:
-            if common_start_date < self.assets[ticker].data["Date"].iloc[0]:
+            if common_start_date <= self.assets[ticker].data["Date"].iloc[0]:
                 common_start_date = self.assets[ticker].data["Date"].iloc[0]
 
         return common_start_date
 
-    def get_common_end_date(self, end_date : Union[datetime.datetime,str,None] = None) -> datetime.datetime:
+    def get_common_end_date(self, end_date : Union[datetime.datetime,str] = None) -> datetime.datetime:
         tickers = list(self.assets.keys())
         tickers = [ticker for ticker in tickers if (ticker in self.assets.keys())]
 
-        if end_date is not None:
-            if type(end_date) == str:
-                end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d')
-                common_end_date = end_date
-        else:
+        if end_date is None :
             common_end_date = self.assets[tickers[0]].data["Date"].iloc[-1]
+        else:
+            if type(end_date) == str:
+                common_end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+            else:
+                common_end_date = end_date
 
         for ticker in tickers:
-            if common_end_date > self.assets[ticker].data["Date"].iloc[-1]:
+            if common_end_date >= self.assets[ticker].data["Date"].iloc[-1]:
                 common_end_date = self.assets[ticker].data["Date"].iloc[-1]
 
         return common_end_date
 
-    def plot_value_portfolio(self,price_column : str = 'Adj Close', start_date: Union[datetime.datetime, str, None] = None, end_date: Union[datetime.datetime, str, None] = None) -> None:
-        common_start_date = self.get_common_start_date(start_date = start_date)
-        common_end_date = self.get_common_end_date(end_date = end_date)
-        tickers = self.get_list_tickers()
-        value = np.zeros(self.assets[tickers[0]]['Date'][(self[tickers[0]]['Date'] >= common_start_date) & (self[tickers[0]]['Date'] <= common_end_date)].shape[0])
-        dates = np.array(self[tickers[0]]['Date'][(self[tickers[0]]['Date'] >= common_start_date) & (self[tickers[0]]['Date'] <= common_end_date)])
-        for ticker in tickers:
-            arr = np.array(self[ticker][price_column][(self[ticker]['Date'] >= common_start_date) & (self[ticker]['Date'] <= common_end_date)])
-            value += self.quantities[ticker]*arr
+    def get_historical_data(self,start_date : Union[datetime.datetime,str] = None,
+                            end_date : Union[datetime.datetime,str] = None,
+                            inplace : bool = False) ->  Union[None,Dict[str, Any]]:
 
-        plt.plot(dates,value)
-        plt.grid()
-        plt.ylabel("valeur")
-        plt.title(f'Evolution de la valeur du portefeuille | {common_start_date} to {common_end_date}')
-        plt.show()
-
-    def get_historical_data(self,start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None, inplace : bool = False) ->  Union[None,Dict[str, Any]]:
         min_date = start_date
         max_date = end_date
         for ticker in self.assets.keys():
@@ -104,7 +91,12 @@ class Portfolio:
             return dict(zip(self.assets.keys(), temp))
 
 
-    def plot_prices(self, tickers : tuple = None, column_name : str = 'Adj Close', normalized_data : bool = True,start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None):
+    def plot_prices(self, tickers : tuple = None,
+                    column_name : str = 'Adj Close',
+                    normalized_data : bool = True,
+                    start_date : Union[datetime.datetime,str,None] = None,
+                    end_date : Union[datetime.datetime,str,None] = None):
+
         if tickers is None:
             tickers = list(self.assets.keys())
         tickers = [ticker for ticker in tickers if (ticker in self.assets.keys())]
@@ -125,7 +117,14 @@ class Portfolio:
         plt.ylabel(column_name) ; plt.xlabel("Date")
         plt.show()
         
-    def add_indicators(self,indicator : str = 'log return 1D', tickers : tuple = None, column_name : str = "Adj Close",start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None):
+    def add_indicators(self,
+                       indicator : Union[str,enumcls.indicators] = 'log return 1d',
+                       tickers : tuple = None, column_name : str = "Adj Close",
+                       start_date : Union[datetime.datetime,str] = None,
+                       end_date : Union[datetime.datetime,str] = None):
+
+        if enumcls.check_element(indicator, enumcls.indicators) is False: ## transformer ça en erreur
+            print("ERROR")
         if tickers is None:
             tickers = list(self.assets.keys())
         tickers = [ticker for ticker in tickers if (ticker in self.assets.keys())]
@@ -137,7 +136,12 @@ class Portfolio:
             self[ticker].add_indicators(indicator = indicator, column_name = column_name, start_date = common_start_date, end_date = common_end_date, inplace = True)
 
 
-    def compute_correlations(self, tickers : set = None, column_name : str = 'Adj Close',start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None):
+    def compute_correlations(self,
+                             tickers : set = None,
+                             column_name : str = 'Adj Close',
+                             start_date : Union[datetime.datetime,str,None] = None,
+                             end_date : Union[datetime.datetime,str,None] = None):
+
         if tickers is None:
             tickers = list(self.assets.keys())
         tickers = [ticker for ticker in tickers if (ticker in self.assets.keys())]
@@ -150,16 +154,28 @@ class Portfolio:
         arr = np.array([self[ticker][column_name][(self[ticker]["Date"] >= common_start_date) & (self[ticker]["Date"] <= common_end_date)] for ticker in tickers])
         return np.corrcoef(arr)
 
-    def plot_heatmap(self, tickers : set = None, column_name : str = 'Adj Close',start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None) -> None:
+    def plot_heatmap(self,
+                     tickers : set = None,
+                     column_name : str = 'Adj Close',
+                     start_date : Union[datetime.datetime,str] = None,
+                     end_date : Union[datetime.datetime,str,None] = None) -> None:
+
         if tickers is None:
             tickers = list(self.assets.keys())
-        tickers = [ticker for ticker in tickers if (ticker in self.assets.keys())]
+
+        tickers = set([ticker for ticker in tickers if (ticker in self.assets.keys())])
         correlation_matrix = self.compute_correlations(tickers = tickers, column_name = column_name,start_date = start_date, end_date = end_date)
         sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, xticklabels=tickers, yticklabels=tickers)
         plt.title(f'Correlation Heatmap | {start_date} to {end_date}')
         plt.show()
 
-    def plot_histogram(self, tickers : tuple = None, column_name : str = "Adj Close", bins : int = None,start_date : Union[datetime.datetime,str,None] = None, end_date : Union[datetime.datetime,str,None] = None):
+    def plot_histogram(self,
+                       tickers : tuple = None,
+                       column_name : str = "Adj Close",
+                       bins : int = None,
+                       start_date : Union[datetime.datetime,str] = None,
+                       end_date : Union[datetime.datetime,str] = None):
+
         if tickers is None:
             tickers = list(self.assets.keys())
         tickers = [ticker for ticker in tickers if (ticker in self.assets.keys())]
@@ -189,6 +205,36 @@ class Portfolio:
         plt.xlabel(column_name) ; plt.grid() ; plt.legend()
         plt.title(f"Histogramme de {column_name} | {common_start_date} to {common_end_date}")
         plt.show()
+
+
+    def get_data(self,
+                 tickers : set = None,
+                 columns : tuple = ('log return 1d',),
+                 start_date : Union[datetime.datetime,str] = None,
+                 end_date : Union[datetime.datetime,str] = None) -> pd.DataFrame:
+
+        if tickers is None:
+            tickers = list(self.assets.keys())
+        tickers = [ticker for ticker in tickers if (ticker in self.assets.keys())]
+
+        common_start_date = self.get_common_start_date(start_date=start_date)
+        common_end_date = self.get_common_end_date(end_date=end_date)
+
+        df = pd.DataFrame()
+        df["Date"] = self[tickers[0]]["Date"][(self[tickers[0]]["Date"] >= common_start_date) & (self[tickers[0]]["Date"] <= common_end_date)]
+        for ticker in tickers:
+            for col in columns :
+                if col not in self.assets[ticker].data.columns:
+                    if enumcls.check_element(element= col, cls_enum= enumcls.indicators):
+                        df[f"{col} - {ticker}"] = self[ticker].add_indicators(indicator= col, start_date=common_start_date, end_date= common_end_date, inplace = False)
+                        print(df[f"{col} - {ticker}"])
+                    else:
+                        print("error")
+                else:
+                    print("error")
+                    df[f"{col} - {ticker}"] = self[ticker].data[col][(self[ticker].data['Date'] >= common_start_date) & (self[ticker].data['Date'] <= common_end_date)]
+
+        return df
 
     
 
